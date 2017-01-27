@@ -22,9 +22,7 @@ libraryDependencies ++= Seq(
 
 licenses += "Apache 2.0 License" -> url("https://www.apache.org/licenses/LICENSE-2.0")
 
-moduleName := s"opentracing-${name.value}"
-
-name := "zipkin"
+name := "zipkin-opentracing"
 
 organization := "com.lucidchart"
 
