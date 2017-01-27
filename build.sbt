@@ -13,7 +13,7 @@ developers += Developer("pauldraper", "Paul Draper", "paulddraper@gmail.com", ur
 
 homepage := Some(url("https://git.lucidchart.com/lucidsoftware/opentracing-httpcomponents"))
 
-javacOptions += "-Xlint:unchecked"
+javacOptions in (Compile, compile) += "-Xlint:unchecked"
 
 libraryDependencies ++= Seq(
   "io.opentracing" % "opentracing-impl" % "0.20.7",
