@@ -12,7 +12,7 @@ public class ZipkinTracer extends AbstractTracer {
     private final Random random;
     private final Reporter<Span> reporter;
 
-    ZipkinTracer(Builder builder) {
+    private ZipkinTracer(Builder builder) {
         this.random = builder.random;
         this.reporter = builder.reporter;
     }
@@ -25,28 +25,37 @@ public class ZipkinTracer extends AbstractTracer {
         Map<String, Object> state = new HashMap<>();
         if (spanContext instanceof ZipkinSpanContext) {
             ZipkinSpanContext zipkinContext = (ZipkinSpanContext)spanContext;
-            state.put(ZipkinSpanBuilder.ID, zipkinContext.getId());
-            state.put(ZipkinSpanBuilder.PARENT_ID, zipkinContext.getParentId());
-            state.put(ZipkinSpanBuilder.TRACE_ID, zipkinContext.getParentId());
+            Long id = zipkinContext.getId();
+            if (id != null) {
+                state.put(ZipkinSpanBuilder.ID, id);
+            }
+            Long parentId = zipkinContext.getParentId();
+            if (parentId != null) {
+                state.put(ZipkinSpanBuilder.PARENT_ID, parentId);
+            }
+            Long traceId = zipkinContext.getTraceId();
+            if (traceId != null) {
+                state.put(ZipkinSpanBuilder.TRACE_ID, traceId);
+            }
         }
         return state;
     }
 
-    public Builder builder() {
-        return new Builder();
+    public static Builder builder(Reporter<Span> reporter) {
+        return new Builder(reporter);
     }
 
     public static class Builder {
         Random random;
         Reporter<Span> reporter;
 
-        public Builder withRandom(Random random) {
-            this.random = random;
-            return this;
+        public Builder(Reporter<Span> reporter) {
+            random = new Random();
+            this.reporter = reporter;
         }
 
-        public Builder withReporter(Reporter<Span> reporter) {
-            this.reporter = reporter;
+        public Builder withRandom(Random random) {
+            this.random = random;
             return this;
         }
 
