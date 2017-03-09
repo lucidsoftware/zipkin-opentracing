@@ -4,12 +4,12 @@ crossPaths := false
 
 developers += Developer("pauldraper", "Paul Draper", "paulddraper@gmail.com", url("https://github.com/pauldraper"))
 
-homepage := Some(url("https://git.lucidchart.com/lucidsoftware/opentracing-httpcomponents"))
+homepage := Some(url("https://git.lucidchart.com/lucidsoftware/opentracing-zipkin"))
 
 javacOptions in (Compile, compile) += "-Xlint:unchecked"
 
 libraryDependencies ++= Seq(
-  "io.opentracing" % "opentracing-impl" % "0.20.7",
+  "io.opentracing" % "opentracing-api" % "0.20.7",
   "io.zipkin.reporter" % "zipkin-reporter" % "0.6.12"
 )
 
@@ -24,8 +24,8 @@ organizationHomepage := Some(url("http://opentracing.io/"))
 organizationName := "OpenTracing"
 
 scmInfo := Some(ScmInfo(
-  url("https://github.com/lucidsoftware/opentracing-httpcomponents"),
-    "scm:git:git@github.com:lucidsoftware/opentracing-httpcomponents.git"
+  url("https://github.com/lucidsoftware/opentracing-zipkin"),
+    "scm:git:git@github.com:lucidsoftware/opentracing-zipkin.git"
   ))
 
 startYear := Some(2017)

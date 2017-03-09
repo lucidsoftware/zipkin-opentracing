@@ -1,4 +1,4 @@
-package io.opentracing.contrib.zipkin;
+package io.opentracing.contrib.zipkin.time;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -16,10 +16,6 @@ public final class TimeUtil {
     public static Instant epochMicrosToInstant(long micros) {
         long seconds = TimeUnit.MICROSECONDS.toSeconds(micros);
         return Instant.ofEpochSecond(seconds, TimeUnit.MICROSECONDS.toNanos(micros - TimeUnit.SECONDS.toMicros(seconds)));
-    }
-
-    public static long micros(Duration duration) {
-        return TimeUnit.SECONDS.toMicros(duration.getSeconds()) + TimeUnit.NANOSECONDS.toMicros(duration.getNano());
     }
 
 }
