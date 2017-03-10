@@ -8,6 +8,7 @@ import java.math.BigInteger;
 import java.net.Inet6Address;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -30,12 +31,12 @@ public class ZipkinSpan implements io.opentracing.Span {
     private final Collection<Annotation.Builder> annotations;
     private final Map<String,String> baggage = new HashMap<>();
     private Boolean isClient;
-    private boolean error;
+    private Instant error;
     private boolean isFinished;
 
     public ZipkinSpan(Span.Builder span, Reporter<Span> reporter, Timer timer) {
         this.builder = span;
-        this.endpointBuilder = Endpoint.builder();
+        this.endpointBuilder = Endpoint.builder().serviceName("");
         this.reporter = reporter;
         this.timer = timer;
         this.annotations = new ArrayList<>();
@@ -64,20 +65,25 @@ public class ZipkinSpan implements io.opentracing.Span {
                     Annotation.builder()
                         .endpoint(endpoint)
                         .timestamp(startMicros)
-                        .value(isClient ? Constants.CLIENT_SEND : Constants.SERVER_SEND)
+                        .value(isClient ? Constants.CLIENT_SEND : Constants.SERVER_RECV)
                         .build()
                 );
                 builder.addAnnotation(
                     Annotation.builder()
                         .endpoint(endpoint)
                         .timestamp(finishMicros)
-                        .value(isClient ? Constants.CLIENT_RECV : Constants.SERVER_RECV)
+                        .value(isClient ? Constants.CLIENT_RECV : Constants.SERVER_SEND)
                         .build()
                 );
             }
 
-            if (error) {
-                builder.addAnnotation(Annotation.builder().endpoint(endpoint).value(Constants.ERROR).build());
+            if (error != null) {
+                Annotation annotation = Annotation.builder()
+                    .endpoint(endpoint)
+                    .timestamp(TimeUtil.epochMicros(error))
+                    .value(Constants.ERROR)
+                    .build();
+                builder.addAnnotation(annotation);
             }
 
             for (Annotation.Builder annotationBuilder : annotations) {
@@ -110,7 +116,7 @@ public class ZipkinSpan implements io.opentracing.Span {
 
     public io.opentracing.Span setTag(String key, boolean value) {
         if (key.equals(Tags.ERROR.getKey())) {
-            error = value;
+            error = value ? timer.getEnd() : null;
         } else {
             builder.addBinaryAnnotation(BinaryAnnotation.builder().key(key).type(BinaryAnnotation.Type.BOOL).value(new byte[]{value ? (byte) 1 : (byte) 0}).build());
         }
