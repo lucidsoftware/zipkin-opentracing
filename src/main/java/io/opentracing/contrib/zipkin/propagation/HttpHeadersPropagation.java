@@ -59,13 +59,13 @@ public final class HttpHeadersPropagation {
         for (Map.Entry<String, String> entry : carrier) {
             switch (entry.getKey()) {
                 case "X-B3-TraceId":
-                    traceId = Long.parseUnsignedLong(entry.getValue(), 4);
+                    traceId = Long.parseUnsignedLong(entry.getValue(), 16);
                     break;
                 case "X-B3-SpanId":
-                    spanId = Long.parseUnsignedLong(entry.getValue(), 4);
+                    spanId = Long.parseUnsignedLong(entry.getValue(), 16);
                     break;
                 case "X-B3-ParentSpanId":
-                    parentSpanId = Long.parseUnsignedLong(entry.getValue(), 4);
+                    parentSpanId = Long.parseUnsignedLong(entry.getValue(), 16);
                     break;
                 default:
                     if (entry.getKey().startsWith("X-B3-Baggage-")) {

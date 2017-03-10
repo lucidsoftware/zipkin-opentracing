@@ -37,13 +37,13 @@ public final class TextMapPropagation {
         for (Map.Entry<String, String> entry : carrier) {
             switch (entry.getKey()) {
                 case "TraceId":
-                    traceId = Long.parseUnsignedLong(entry.getValue(), 4);
+                    traceId = Long.parseUnsignedLong(entry.getValue(), 16);
                     break;
                 case "SpanId":
-                    spanId = Long.parseUnsignedLong(entry.getValue(), 4);
+                    spanId = Long.parseUnsignedLong(entry.getValue(), 16);
                     break;
                 case "ParentSpanId":
-                    parentSpanId = Long.parseUnsignedLong(entry.getValue(), 4);
+                    parentSpanId = Long.parseUnsignedLong(entry.getValue(), 16);
                     break;
                 default:
                     if (entry.getKey().startsWith("Baggage-")) {
