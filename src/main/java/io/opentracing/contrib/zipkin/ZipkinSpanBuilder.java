@@ -45,7 +45,7 @@ public class ZipkinSpanBuilder implements Tracer.SpanBuilder {
     }
 
     public Tracer.SpanBuilder asChildOf(io.opentracing.Span parent) {
-        return asChildOf(parent);
+        return asChildOf(parent.context());
     }
 
     public Tracer.SpanBuilder addReference(String referenceType, SpanContext referencedContext) {
