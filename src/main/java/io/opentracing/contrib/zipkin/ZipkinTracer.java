@@ -5,30 +5,80 @@ import io.opentracing.Tracer;
 import io.opentracing.contrib.zipkin.propagation.HttpHeadersPropagation;
 import io.opentracing.contrib.zipkin.propagation.TextMapPropagation;
 import io.opentracing.propagation.Format;
+import java.net.Inet4Address;
+import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import zipkin.Endpoint;
 import zipkin.Span;
 import zipkin.reporter.Reporter;
 
 public class ZipkinTracer implements Tracer {
 
+    private static final Random defaultRandom = new Random();
+
+    private final Endpoint endpoint;
     private final Reporter<Span> reporter;
     private final Random random;
     private final Map<Format, BiConsumer> injectors;
     private final Map<Format, Function> extractors;
 
     private ZipkinTracer(Builder builder) {
+        if (builder.endpoint != null) {
+            endpoint = builder.endpoint;
+        } else {
+            final Endpoint.Builder endpointBuilder = Endpoint.builder();
+            String serviceName;
+            try {
+                serviceName = InetAddress.getLocalHost().getCanonicalHostName();
+            } catch (UnknownHostException e) {
+                serviceName = "";
+            }
+            endpointBuilder.serviceName(serviceName);
+            try {
+                final Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+                outer:
+                while (networkInterfaces.hasMoreElements()) {
+                    final NetworkInterface networkInterface = networkInterfaces.nextElement();
+                    if (networkInterface.isUp() && !networkInterface.isVirtual() && !networkInterface.isLoopback()) {
+                        final Enumeration<InetAddress> addresses = networkInterface.getInetAddresses();
+                        while (addresses.hasMoreElements()) {
+                            final InetAddress address = addresses.nextElement();
+                            if (address instanceof Inet4Address) {
+                                endpointBuilder.ipv4(ByteBuffer.wrap(address.getAddress()).getInt());
+                                break outer;
+                            } else if (address instanceof Inet6Address) {
+                                endpointBuilder.ipv6(address.getAddress());
+                                break outer;
+                            }
+                        }
+                    }
+                }
+            } catch (SocketException e) {
+            }
+            endpoint = endpointBuilder.build();
+        }
         reporter = builder.reporter;
-        random = builder.random;
+        if (builder.random != null) {
+            random = builder.random;
+        } else {
+            random = defaultRandom;
+        }
         injectors = new HashMap<>(builder.injectors);
         extractors = new HashMap<>(builder.extractors);
     }
 
     public SpanBuilder buildSpan(String name) {
-        return new ZipkinSpanBuilder(name, random, reporter);
+        return new ZipkinSpanBuilder(name, endpoint, random, reporter);
     }
 
     @SuppressWarnings("unchecked")
@@ -46,17 +96,14 @@ public class ZipkinTracer implements Tracer {
     }
 
     public static class Builder {
-
-        private static final Random defaultRandom = new Random();
-
         final Reporter<Span> reporter;
+        Endpoint endpoint;
         Random random;
         Map<Format, BiConsumer<SpanContext, ?>> injectors;
         Map<Format, Function<?, SpanContext>> extractors;
 
         public Builder(Reporter<Span> reporter) {
             this.reporter = reporter;
-            random = defaultRandom;
             injectors = new HashMap<>();
             extractors = new HashMap<>();
             withInjector(Format.Builtin.TEXT_MAP, TextMapPropagation.injector);

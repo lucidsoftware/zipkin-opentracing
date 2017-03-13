@@ -11,22 +11,25 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.function.Consumer;
+import zipkin.Endpoint;
 import zipkin.Span;
 import zipkin.reporter.Reporter;
 
 public class ZipkinSpanBuilder implements Tracer.SpanBuilder {
 
     private String name;
+    private final Endpoint endpoint;
     private ZipkinSpanContext parent;
     private final Reporter<Span> reporter;
     private final Map<String, String> baggage;
     private final Map<String, Consumer<io.opentracing.Span>> tags;
     private final Random random;
     private Instant start;
-    private Boolean isClient;
+    private String kind;
 
-    public ZipkinSpanBuilder(String name, Random random, Reporter<Span> reporter) {
+    public ZipkinSpanBuilder(String name, Endpoint endpoint, Random random, Reporter<Span> reporter) {
         this.name = name;
+        this.endpoint = endpoint;
         this.reporter = reporter;
         this.random = random;
         this.baggage = new HashMap<>();
@@ -57,7 +60,7 @@ public class ZipkinSpanBuilder implements Tracer.SpanBuilder {
 
     public Tracer.SpanBuilder withTag(String key, String value) {
         if (key.equals(Tags.SPAN_KIND.getKey())) {
-            isClient = value.equals(Tags.SPAN_KIND_CLIENT) ? Boolean.TRUE : value.equals(Tags.SPAN_KIND_SERVER) ? Boolean.FALSE : null;
+            kind = value;
         }
         tags.put(key, span -> span.setTag(key, value));
         return this;
@@ -82,13 +85,17 @@ public class ZipkinSpanBuilder implements Tracer.SpanBuilder {
         Span.Builder builder = Span.builder()
             .name(name)
             .traceId(parent == null ? random.nextLong() : parent.getTraceId());
-        if (parent != null && isClient != null && !isClient) {
+        if (parent != null && Tags.SPAN_KIND_CLIENT.equals(kind)) {
+            // if server side, don't create new Zipkin span; re-use existing, for two-sided span
             builder.id(parent.getId());
             builder.parentId(parent.getParentId());
         } else {
             builder.id(random.nextLong());
+            if (parent != null) {
+                builder.parentId(parent.getId());
+            }
         }
-        io.opentracing.Span span = new ZipkinSpan(builder, reporter, start == null ? new Timer(): new Timer(start));
+        io.opentracing.Span span = new ZipkinSpan(builder, endpoint, reporter, start == null ? new Timer() : new Timer(start));
         for (Map.Entry<String, Consumer<io.opentracing.Span>> tag : tags.entrySet()) {
             tag.getValue().accept(span);
         }
