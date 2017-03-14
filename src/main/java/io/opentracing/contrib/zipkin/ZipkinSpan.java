@@ -91,7 +91,7 @@ public class ZipkinSpan implements io.opentracing.Span {
                         .build()
                     );
                 if (peer != null) {
-                    builder.addAnnotation(Annotation.builder().endpoint(endpoint).value(Constants.SERVER_ADDR).build());
+                    builder.addAnnotation(Annotation.builder().endpoint(endpoint).timestamp(startMicros).value(Constants.SERVER_ADDR).build());
                 }
             } else if (Tags.SPAN_KIND_SERVER.equals(kind)) {
                 builder
@@ -108,7 +108,7 @@ public class ZipkinSpan implements io.opentracing.Span {
                         .build()
                     );
                 if (peer != null) {
-                    builder.addAnnotation(Annotation.builder().endpoint(endpoint).value(Constants.CLIENT_ADDR).build());
+                    builder.addAnnotation(Annotation.builder().endpoint(endpoint).timestamp(startMicros).value(Constants.CLIENT_ADDR).build());
                 }
             } else if (kind != null) {
                 builder.addBinaryAnnotation(BinaryAnnotation.builder()
