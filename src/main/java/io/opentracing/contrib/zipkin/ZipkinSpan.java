@@ -34,6 +34,7 @@ public class ZipkinSpan implements io.opentracing.Span {
     private Integer peerIpv4;
     private byte[] peerIpv6;
     private Short peerPort;
+    private Instant peerUpdated;
 
     public ZipkinSpan(final Span.Builder span, final Endpoint endpoint, final Reporter<Span> reporter, final Timer timer) {
         this.builder = span;
@@ -91,7 +92,12 @@ public class ZipkinSpan implements io.opentracing.Span {
                         .build()
                     );
                 if (peer != null) {
-                    builder.addAnnotation(Annotation.builder().endpoint(endpoint).timestamp(startMicros).value(Constants.SERVER_ADDR).build());
+                    builder.addAnnotation(Annotation.builder()
+                        .endpoint(peer)
+                        .timestamp(TimeUtil.epochMicros(peerUpdated))
+                        .value(Constants.SERVER_ADDR)
+                        .build()
+                    );
                 }
             } else if (Tags.SPAN_KIND_SERVER.equals(kind)) {
                 builder
@@ -108,7 +114,11 @@ public class ZipkinSpan implements io.opentracing.Span {
                         .build()
                     );
                 if (peer != null) {
-                    builder.addAnnotation(Annotation.builder().endpoint(endpoint).timestamp(startMicros).value(Constants.CLIENT_ADDR).build());
+                    builder.addAnnotation(Annotation.builder()
+                        .endpoint(peer)
+                        .timestamp(TimeUtil.epochMicros(peerUpdated))
+                        .value(Constants.CLIENT_ADDR).build()
+                    );
                 }
             } else if (kind != null) {
                 builder.addBinaryAnnotation(BinaryAnnotation.builder()
@@ -145,13 +155,16 @@ public class ZipkinSpan implements io.opentracing.Span {
         } else if (key.equals(Tags.PEER_HOST_IPV6.getKey())) {
             try {
                 peerIpv6 = Inet6Address.getByName(value).getAddress();
+                peerUpdated = timer.getEnd();
             } catch (UnknownHostException e) {
             }
         } else if (key.equals(Tags.PEER_SERVICE.getKey())) {
             peerServiceName = value;
+            peerUpdated = timer.getEnd();
         } else {
             if (key.equals(Tags.PEER_HOSTNAME.getKey()) && peerServiceName == null) {
                 peerServiceName = value;
+                peerUpdated = timer.getEnd();
             }
             builder.addBinaryAnnotation(BinaryAnnotation.builder().endpoint(endpoint).key(key).type(BinaryAnnotation.Type.STRING).value(value).build());
         }
@@ -171,8 +184,10 @@ public class ZipkinSpan implements io.opentracing.Span {
     public io.opentracing.Span setTag(String key, Number value) {
         if (key.equals(Tags.PEER_HOST_IPV4.getKey())) {
             peerIpv4 = value.intValue();
+            peerUpdated = timer.getEnd();
         } else if (key.equals(Tags.PEER_PORT.getKey())) {
             peerPort = value.shortValue();
+            peerUpdated = timer.getEnd();
         } else {
             BinaryAnnotation.Builder annotationBuilder = BinaryAnnotation.builder().key(key);
             final ByteBuffer bytes;
