@@ -85,7 +85,7 @@ public class ZipkinSpanBuilder implements Tracer.SpanBuilder {
         Span.Builder builder = Span.builder()
             .name(name)
             .traceId(parent == null ? random.nextLong() : parent.getTraceId());
-        if (parent != null && Tags.SPAN_KIND_CLIENT.equals(kind)) {
+        if (parent != null && Tags.SPAN_KIND_SERVER.equals(kind)) {
             // if server side, don't create new Zipkin span; re-use existing, for two-sided span
             builder.id(parent.getId());
             builder.parentId(parent.getParentId());
