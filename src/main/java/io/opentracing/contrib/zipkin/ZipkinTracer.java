@@ -113,6 +113,11 @@ public class ZipkinTracer implements Tracer {
             // TODO: Format.Builtin.BINARY
         }
 
+        public Builder withEndpoint(final Endpoint endpoint) {
+            this.endpoint = endpoint;
+            return this;
+        }
+
         public Builder withRandom(Random random) {
             this.random = random;
             return this;
