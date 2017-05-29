@@ -1,5 +1,7 @@
 package io.opentracing.contrib.zipkin;
 
+import io.opentracing.ActiveSpan;
+import io.opentracing.ActiveSpanSource;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.contrib.zipkin.propagation.HttpHeadersPropagation;
@@ -31,6 +33,7 @@ public class ZipkinTracer implements Tracer {
     private final Random random;
     private final Map<Format, BiConsumer> injectors;
     private final Map<Format, Function> extractors;
+    private final ActiveSpanSource activeSpanSource;
 
     private ZipkinTracer(Builder builder) {
         if (builder.endpoint != null) {
@@ -75,10 +78,11 @@ public class ZipkinTracer implements Tracer {
         }
         injectors = new HashMap<>(builder.injectors);
         extractors = new HashMap<>(builder.extractors);
+        activeSpanSource = builder.activeSpanSource;
     }
 
     public SpanBuilder buildSpan(String name) {
-        return new ZipkinSpanBuilder(name, endpoint, random, reporter);
+        return new ZipkinSpanBuilder(name, endpoint, random, reporter, activeSpanSource);
     }
 
     @SuppressWarnings("unchecked")
@@ -91,6 +95,14 @@ public class ZipkinTracer implements Tracer {
         return (SpanContext)extractors.get(format).apply(carrier);
     }
 
+    public ActiveSpan activeSpan() {
+        return activeSpanSource == null ? null : activeSpanSource.activeSpan();
+    }
+
+    public ActiveSpan makeActive(io.opentracing.Span span) {
+        return activeSpanSource == null ? null : activeSpanSource.makeActive(span);
+    }
+
     public static Builder builder(Reporter<Span> reporter) {
         return new Builder(reporter);
     }
@@ -101,6 +113,7 @@ public class ZipkinTracer implements Tracer {
         Random random;
         Map<Format, BiConsumer<SpanContext, ?>> injectors;
         Map<Format, Function<?, SpanContext>> extractors;
+        ActiveSpanSource activeSpanSource;
 
         public Builder(Reporter<Span> reporter) {
             this.reporter = reporter;
@@ -130,6 +143,11 @@ public class ZipkinTracer implements Tracer {
 
         public <C> Builder withExtractor(Format<C> format, Function<C, SpanContext> extractor) {
             extractors.put(format, extractor);
+            return this;
+        }
+
+        public Builder withActiveSpanSource(ActiveSpanSource activeSpanSource) {
+            this.activeSpanSource = activeSpanSource;
             return this;
         }
 

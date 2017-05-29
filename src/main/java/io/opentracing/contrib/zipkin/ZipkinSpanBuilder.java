@@ -1,5 +1,7 @@
 package io.opentracing.contrib.zipkin;
 
+import io.opentracing.ActiveSpanSource;
+import io.opentracing.BaseSpan;
 import io.opentracing.References;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
@@ -24,14 +26,17 @@ public class ZipkinSpanBuilder implements Tracer.SpanBuilder {
     private final Map<String, String> baggage;
     private final Map<String, Consumer<io.opentracing.Span>> tags;
     private final Random random;
+    private final ActiveSpanSource activeSpanSource;
     private Instant start;
     private String kind;
+    private boolean ignoreActiveSpan;
 
-    public ZipkinSpanBuilder(String name, Endpoint endpoint, Random random, Reporter<Span> reporter) {
+    public ZipkinSpanBuilder(String name, Endpoint endpoint, Random random, Reporter<Span> reporter, ActiveSpanSource activeSpanSource) {
         this.name = name;
         this.endpoint = endpoint;
         this.reporter = reporter;
         this.random = random;
+        this.activeSpanSource = activeSpanSource;
         this.baggage = new HashMap<>();
         tags = new HashMap<>();
     }
@@ -42,12 +47,13 @@ public class ZipkinSpanBuilder implements Tracer.SpanBuilder {
 
     public Tracer.SpanBuilder asChildOf(SpanContext parent) {
         if (parent instanceof ZipkinSpanContext) {
-            this.parent = (ZipkinSpanContext)parent;
+            this.parent = (ZipkinSpanContext) parent;
+            this.ignoreActiveSpan = true;
         }
         return this;
     }
 
-    public Tracer.SpanBuilder asChildOf(io.opentracing.Span parent) {
+    public Tracer.SpanBuilder asChildOf(BaseSpan<?> parent) {
         return asChildOf(parent.context());
     }
 
@@ -55,6 +61,11 @@ public class ZipkinSpanBuilder implements Tracer.SpanBuilder {
         if (referenceType.equals(References.CHILD_OF)) {
             asChildOf(referencedContext);
         }
+        return this;
+    }
+
+    public Tracer.SpanBuilder ignoreActiveSpan() {
+        ignoreActiveSpan = true;
         return this;
     }
 
@@ -81,10 +92,31 @@ public class ZipkinSpanBuilder implements Tracer.SpanBuilder {
         return this;
     }
 
+    public io.opentracing.ActiveSpan startActive() {
+        if (activeSpanSource == null) {
+            throw new IllegalStateException("Cannot start active span because there was no ActiveSpanSource configured.");
+        }
+        return activeSpanSource.makeActive(startManual());
+    }
+
     public io.opentracing.Span start() {
+        io.opentracing.Span span = startManual();
+        if (activeSpanSource != null) {
+            activeSpanSource.makeActive(span);
+        }
+        return span;
+    }
+
+    public io.opentracing.Span startManual() {
+        if (activeSpanSource != null && !ignoreActiveSpan) {
+            io.opentracing.ActiveSpan activeSpan = activeSpanSource.activeSpan();
+            if (activeSpan != null) {
+                this.asChildOf(activeSpan);
+            }
+        }
         Span.Builder builder = Span.builder()
-            .name(name)
-            .traceId(parent == null ? random.nextLong() : parent.getTraceId());
+                .name(name)
+                .traceId(parent == null ? random.nextLong() : parent.getTraceId());
         if (parent != null && Tags.SPAN_KIND_SERVER.equals(kind)) {
             // if server side, don't create new Zipkin span; re-use existing, for two-sided span
             builder.id(parent.getId());
