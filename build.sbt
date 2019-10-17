@@ -9,7 +9,7 @@ homepage := Some(url("https://git.lucidchart.com/lucidsoftware/opentracing-zipki
 javacOptions in (Compile, compile) += "-Xlint:unchecked"
 
 libraryDependencies ++= Seq(
-  "io.opentracing" % "opentracing-api" % "0.20.7",
+  "io.opentracing" % "opentracing-api" % "0.31.0",
   "io.zipkin.reporter" % "zipkin-reporter" % "0.6.12"
 )
 
